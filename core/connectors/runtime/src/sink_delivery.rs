@@ -1402,6 +1402,7 @@ mod tests {
             skip: None,
             offset: None,
             record: None,
+            lost: None,
         });
 
         let result = deliver_all(plugin_id, &mut log, test_delivery()).await;

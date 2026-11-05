@@ -153,6 +153,9 @@ async fn start_shared_container() -> Result<ContainerAsync<GenericImage>, TestBi
             .with_env_var("discovery.type", "single-node")
             .with_env_var("xpack.security.enabled", "false")
             .with_env_var("ES_JAVA_OPTS", "-Xms512m -Xmx512m")
+            // Above 90% disk use, the default high watermark refuses every shard, so a full dev
+            // disk wedges index creation.
+            .with_env_var("cluster.routing.allocation.disk.threshold_enabled", "false")
             .with_mapped_port(0, ELASTICSEARCH_PORT.tcp())
             .with_container_name(ELASTICSEARCH_CONTAINER_NAME)
             .with_reuse(ReuseDirective::Always)

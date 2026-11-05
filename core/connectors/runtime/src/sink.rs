@@ -1923,6 +1923,7 @@ mod tests {
             skip,
             offset: None,
             record: None,
+            lost: None,
         };
         let mut messages = FakeMessages::new(futures::stream::iter([
             Err(stopped(
@@ -1978,7 +1979,6 @@ mod tests {
         let topic = Identifier::named("test_topic").expect("valid topic name");
         let refusals = [
             IggyError::Unauthorized,
-            IggyError::ConsumerGroupPartitionNotOwned(1, 2),
             IggyError::FeatureUnavailable,
             IggyError::InvalidCommand,
             IggyError::PartitionNotFound(3, stream.clone(), topic.clone()),
@@ -1996,6 +1996,7 @@ mod tests {
                 skip: None,
                 offset: None,
                 record: None,
+                lost: None,
             })
             .map(Err::<iggy::prelude::ReceivedMessage, _>);
         let mut messages = FakeMessages::new(futures::stream::iter(stops));
@@ -2024,6 +2025,7 @@ mod tests {
                 skip: None,
                 offset: None,
                 record: None,
+                lost: None,
             }),
             Err(ReadError {
                 partition_id: Some(1),
@@ -2031,6 +2033,15 @@ mod tests {
                 skip: None,
                 offset: None,
                 record: None,
+                lost: None,
+            }),
+            Err(ReadError {
+                partition_id: Some(2),
+                error: IggyError::ConsumerGroupPartitionNotOwned(1, 2),
+                skip: None,
+                offset: None,
+                record: None,
+                lost: None,
             }),
             Err(ReadError {
                 partition_id: None,
@@ -2038,13 +2049,14 @@ mod tests {
                 skip: None,
                 offset: None,
                 record: None,
+                lost: None,
             }),
         ]));
 
         consume_reads(plugin_id, &mut messages, &metrics).await;
 
         assert_eq!(messages.calls, []);
-        assert_eq!(metrics.get_errors("test_sink", ConnectorType::Sink), 3);
+        assert_eq!(metrics.get_errors("test_sink", ConnectorType::Sink), 4);
     }
 
     #[tokio::test]
@@ -2059,6 +2071,7 @@ mod tests {
                 skip: None,
                 offset: None,
                 record: None,
+                lost: None,
             })]))
         };
 
@@ -2084,6 +2097,7 @@ mod tests {
             skip: None,
             offset: None,
             record: None,
+            lost: None,
         };
         let mut messages = FakeMessages::new(futures::stream::iter([Err(lost(1)), Err(lost(2))]));
         let warnings = Arc::new(AtomicUsize::new(0));
