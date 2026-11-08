@@ -7293,6 +7293,7 @@ version = "0.2.0"
 dependencies = [
  "arc-swap",
  "async-trait",
+ "axum",
  "base64 0.23.1",
  "bytes",
  "futures",
@@ -7302,6 +7303,7 @@ dependencies = [
  "iggy_kafka_wire",
  "kafka-protocol",
  "libc",
+ "prometheus-client",
  "rcgen",
  "regex",
  "regex-syntax",

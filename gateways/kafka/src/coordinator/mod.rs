@@ -55,6 +55,7 @@ use crate::coordinator::partition::{LoadError, PartitionLog, Stop, Stopped, TAIL
 use crate::coordinator::record::{Announcement, Body, CommittedOffset};
 use crate::coordinator::replay::{GroupOffsets, PartitionState, TopicPartition};
 use crate::group::{GroupCoordinator, GroupHome, GroupSnapshot};
+use crate::observability::CoordinatorCensus;
 use crate::protocol::api::{ERROR_COORDINATOR_LOAD_IN_PROGRESS, ERROR_NOT_COORDINATOR};
 
 /// Partitions of the coordinator log.
@@ -229,6 +230,8 @@ pub struct Coordination {
     leasing: CancellationToken,
     /// The lease loop, which a shutdown waits for.
     lease_loop: Mutex<Option<JoinHandle<()>>>,
+    /// When the lease loop last read this gateway's share of the partitions from Iggy.
+    lease_read: Mutex<Instant>,
     cancel: CancellationToken,
 }
 
@@ -292,6 +295,7 @@ impl Coordination {
             stopped,
             leasing: cancel.child_token(),
             lease_loop: Mutex::new(None),
+            lease_read: Mutex::new(Instant::now()),
             cancel,
         });
         groups.set_home(Arc::clone(&this) as Arc<dyn GroupHome>);
@@ -381,6 +385,22 @@ impl Coordination {
                  FindCoordinator answers COORDINATOR_NOT_AVAILABLE (15) for them until this \
                  gateway restarts with a list that names it"
             );
+        }
+    }
+
+    /// The partitions this gateway serves, and the age of its lease, for the metrics.
+    #[must_use]
+    pub fn census(&self) -> CoordinatorCensus {
+        let mut served: Vec<u32> = self.served().keys().copied().collect();
+        served.sort_unstable();
+        let lease_read = *self
+            .lease_read
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner);
+        CoordinatorCensus {
+            served,
+            partitions: PARTITIONS,
+            lease_age: lease_read.elapsed(),
         }
     }
 
@@ -591,11 +611,11 @@ impl Coordination {
                     };
                     match read {
                         Ok(Some(assigned)) => {
-                            last_read = Instant::now();
+                            last_read = self.read_lease_now();
                             self.reconcile(&assigned);
                         }
                         Ok(None) => {
-                            last_read = Instant::now();
+                            last_read = self.read_lease_now();
                             self.release_all(Stop::Released).await;
                             if self.leasing.is_cancelled() {
                                 return;
@@ -1090,6 +1110,16 @@ impl Coordination {
             .filter(|(at, _)| at.elapsed() < DELETION_MEMORY)
             .map(|(_, deleted)| deleted.clone())
             .collect()
+    }
+
+    /// Notes that the lease loop read the lease now, and returns now.
+    fn read_lease_now(&self) -> Instant {
+        let now = Instant::now();
+        *self
+            .lease_read
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner) = now;
+        now
     }
 
     fn served(&self) -> std::sync::RwLockReadGuard<'_, HashMap<u32, Arc<PartitionLog>>> {

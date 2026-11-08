@@ -38,7 +38,7 @@ pub use iggy_bridge::{
     CLUSTER_ID_TOPIC, COORDINATOR_LEASE_GROUP, COORDINATOR_LOG_TOPIC, COORDINATOR_OWNER_TOPIC,
     ClusterIdCall, CoordinatorLink, DEFAULT_TOPIC_PARTITIONS, DeletedTopic, IggyBridge,
     KafkaTopicMetadata, LoggedRecord, MAX_TOPIC_PARTITIONS, OFFSET_GROUP_PREFIX, OffsetCalls,
-    OffsetGroupSource, OffsetGroups, PartitionBatch, PermissionBoard, ProduceTurn, Producer,
+    OffsetGroupSource, OffsetGroups, PartitionBatch, PermissionBoard, ProduceTurn, Producer, Reach,
     ScannedGroups, StreamTopicCache, TopicCreationOutcome, TopicLoad, TopicShape, TopicShapes,
     TopicTarget, UserAccess, cluster_id_stream, iggy_producer_id, kafka_producer_id,
 };
